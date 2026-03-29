@@ -1,8 +1,17 @@
+"""
+用户界面模块。
+
+定义待办事项应用的所有 UI 组件和主窗口。
+"""
+
 import os
+import logging
+from typing import Optional, List
 
 from components import ThemedOptionCardPlane
 from icons import IconDictionary
-from PyQt5.Qt import QColor, QPoint
+from theme_manager import get_theme_manager
+from PyQt5.Qt import QColor, QPoint, QEvent
 from PyQt5.QtCore import Qt, pyqtSignal, QCoreApplication
 from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QMainWindow, QTextEdit
 from settings_parser import SettingsParser
@@ -23,90 +32,46 @@ from siui.core.color import Color
 from siui.core.globals import NewGlobal, SiGlobal
 from siui.gui.tooltip import ToolTipWindow
 
+logger = logging.getLogger(__name__)
+
 # 创建删除队列
 SiGlobal.todo_list = NewGlobal()
-SiGlobal.todo_list.delete_pile = []
+SiGlobal.todo_list.delete_pile: List = []
 
 # 创建锁定位置变量
-SiGlobal.todo_list.position_locked = False
+SiGlobal.todo_list.position_locked: bool = False
 
 # 创建设置文件解析器并写入全局变量
-SiGlobal.todo_list.settings_parser = SettingsParser("./options.ini")
-SiGlobal.todo_list.todos_parser = TODOParser("./todos.ini")
+SiGlobal.todo_list.settings_parser: SettingsParser = SettingsParser("./options.ini")
+SiGlobal.todo_list.todos_parser: TODOParser = TODOParser("./todos.ini")
 
-def lock_position(state):
+
+def lock_position(state: bool) -> None:
+    """
+    锁定或解锁窗口位置。
+
+    Args:
+        state: 是否锁定位置
+    """
     SiGlobal.todo_list.position_locked = state
 
 
-# 主题颜色
-def load_colors(is_dark=True):
-    if is_dark is True:  # 深色主题
-        # 加载图标
-        SiGlobal.siui.icons.update(IconDictionary(color="#e1d9e8").icons)
+def load_colors(is_dark: bool = True) -> None:
+    """
+    加载并应用主题颜色。
 
-        # 设置颜色
-        SiGlobal.siui.colors["THEME"] = "#e1d9e8"
-        SiGlobal.siui.colors["PANEL_THEME"] = "#0F85D3"
-        SiGlobal.siui.colors["BACKGROUND_COLOR"] = "#252229"
-        SiGlobal.siui.colors["BACKGROUND_DARK_COLOR"] = SiGlobal.siui.colors["INTERFACE_BG_A"]
-        SiGlobal.siui.colors["BORDER_COLOR"] = "#3b373f"
-        SiGlobal.siui.colors["TOOLTIP_BG"] = "ef413a47"
-        SiGlobal.siui.colors["SVG_A"] = SiGlobal.siui.colors["THEME"]
-
-        SiGlobal.siui.colors["THEME_TRANSITION_A"] = "#52389a"
-        SiGlobal.siui.colors["THEME_TRANSITION_B"] = "#9c4e8b"
-
-        SiGlobal.siui.colors["TEXT_A"] = "#FFFFFF"
-        SiGlobal.siui.colors["TEXT_B"] = "#e1d9e8"
-        SiGlobal.siui.colors["TEXT_C"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.75)
-        SiGlobal.siui.colors["TEXT_D"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.6)
-        SiGlobal.siui.colors["TEXT_E"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.5)
-
-        SiGlobal.siui.colors["SWITCH_DEACTIVATE"] = "#D2D2D2"
-        SiGlobal.siui.colors["SWITCH_ACTIVATE"] = "#100912"
-
-        SiGlobal.siui.colors["BUTTON_HOVER"] = "#10FFFFFF"
-        SiGlobal.siui.colors["BUTTON_FLASH"] = "#20FFFFFF"
-
-        SiGlobal.siui.colors["SIMPLE_BUTTON_BG"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.1)
-
-        SiGlobal.siui.colors["TOGGLE_BUTTON_OFF_BG"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0)
-        SiGlobal.siui.colors["TOGGLE_BUTTON_ON_BG"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.1)
-
-    else:  # 亮色主题
-        # 加载图标
-        SiGlobal.siui.icons.update(IconDictionary(color="#0F85D3").icons)
-
-        # 设置颜色
-        SiGlobal.siui.colors["THEME"] = "#0F85D3"
-        SiGlobal.siui.colors["PANEL_THEME"] = "#0F85D3"
-        SiGlobal.siui.colors["BACKGROUND_COLOR"] = "#F3F3F3"
-        SiGlobal.siui.colors["BACKGROUND_DARK_COLOR"] = "#e8e8e8"
-        SiGlobal.siui.colors["BORDER_COLOR"] = "#d0d0d0"
-        SiGlobal.siui.colors["TOOLTIP_BG"] = "#F3F3F3"
-        SiGlobal.siui.colors["SVG_A"] = SiGlobal.siui.colors["THEME"]
-
-        SiGlobal.siui.colors["THEME_TRANSITION_A"] = "#2abed8"
-        SiGlobal.siui.colors["THEME_TRANSITION_B"] = "#2ad98e"
-
-        SiGlobal.siui.colors["TEXT_A"] = "#1f1f2f"
-        SiGlobal.siui.colors["TEXT_B"] = Color.transparency(SiGlobal.siui.colors["TEXT_A"], 0.85)
-        SiGlobal.siui.colors["TEXT_C"] = Color.transparency(SiGlobal.siui.colors["TEXT_A"], 0.75)
-        SiGlobal.siui.colors["TEXT_D"] = Color.transparency(SiGlobal.siui.colors["TEXT_A"], 0.6)
-        SiGlobal.siui.colors["TEXT_E"] = Color.transparency(SiGlobal.siui.colors["TEXT_A"], 0.5)
-
-        SiGlobal.siui.colors["SWITCH_DEACTIVATE"] = "#bec1c7"
-        SiGlobal.siui.colors["SWITCH_ACTIVATE"] = "#F3F3F3"
-
-        SiGlobal.siui.colors["BUTTON_HOVER"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.0625)
-        SiGlobal.siui.colors["BUTTON_FLASH"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.43)
-
-        SiGlobal.siui.colors["SIMPLE_BUTTON_BG"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.6)
-
-        SiGlobal.siui.colors["TOGGLE_BUTTON_OFF_BG"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0)
-        SiGlobal.siui.colors["TOGGLE_BUTTON_ON_BG"] = Color.transparency(SiGlobal.siui.colors["THEME"], 0.1)
+    Args:
+        is_dark: True 为深色主题，False 为亮色主题
+    """
+    theme_manager = get_theme_manager()
+    theme_manager.apply_theme(SiGlobal.siui.colors, is_dark)
+    
+    # 加载图标
+    icon_color = "#e1d9e8" if is_dark else "#0F85D3"
+    SiGlobal.siui.icons.update(IconDictionary(color=icon_color).icons)
 
     SiGlobal.siui.reloadAllWindowsStyleSheet()
+    logger.debug(f"已加载{'深色' if is_dark else '亮色'}主题颜色")
 
 
 # 加载主题颜色
@@ -114,9 +79,10 @@ load_colors(is_dark=False)
 
 
 class SingleSettingOption(SiDenseVContainer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    """单个设置选项容器。"""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.setSpacing(2)
 
         self.title = SiLabel(self)
@@ -131,21 +97,29 @@ class SingleSettingOption(SiDenseVContainer):
         self.addWidget(self.description)
         self.addPlaceholder(4)
 
-    def setTitle(self, title: str, description: str):
+    def setTitle(self, title: str, description: str) -> None:
+        """
+        设置标题和描述。
+
+        Args:
+            title: 选项标题
+            description: 选项描述
+        """
         self.title.setText(title)
         self.description.setText(description)
 
-    def reloadStyleSheet(self):
+    def reloadStyleSheet(self) -> None:
+        """重新加载样式表。"""
         super().reloadStyleSheet()
-
         self.title.setStyleSheet("color: {}".format(SiGlobal.siui.colors["TEXT_B"]))
         self.description.setStyleSheet("color: {}".format(SiGlobal.siui.colors["TEXT_D"]))
 
 
 class SingleTODOOption(SiDenseHContainer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    """单个待办事项选项。"""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.setShrinking(True)
 
         self.check_box = SiCheckBox(self)
@@ -168,25 +142,42 @@ class SingleTODOOption(SiDenseHContainer):
         # 初始化时自动载入样式表
         self.reloadStyleSheet()
 
-    def reloadStyleSheet(self):
+    def reloadStyleSheet(self) -> None:
+        """重新加载样式表。"""
         super().reloadStyleSheet()
-
         self.text_label.setStyleSheet("color: {}".format(SiGlobal.siui.colors["TEXT_B"]))
 
-    def _onChecked(self, state):
-        if state is True:
+    def _onChecked(self, state: bool) -> None:
+        """
+        响应复选框状态改变事件。
+
+        Args:
+            state: 复选框的新状态
+        """
+        if state:
             SiGlobal.todo_list.delete_pile.append(self)
         else:
-            index = SiGlobal.todo_list.delete_pile.index(self)
-            SiGlobal.todo_list.delete_pile.pop(index)
+            try:
+                index = SiGlobal.todo_list.delete_pile.index(self)
+                SiGlobal.todo_list.delete_pile.pop(index)
+            except ValueError:
+                logger.warning("尝试从删除队列中移除不存在的项")
 
-    def setText(self, text: str):
+    def setText(self, text: str) -> None:
+        """
+        设置待办事项文本。
+
+        Args:
+            text: 待办事项文本
+        """
         self.text_label.setText(text)
 
-    def adjustSize(self):
+    def adjustSize(self) -> None:
+        """调整组件大小以适应内容。"""
         self.setFixedHeight(self.text_label.height())
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QEvent) -> None:
+        """处理大小改变事件。"""
         super().resizeEvent(event)
         self.text_label.setFixedWidth(event.size().width() - 48)
         self.text_label.adjustSize()
@@ -272,11 +263,12 @@ class AppHeaderPanel(SiLabel):
 
 
 class TODOListPanel(ThemedOptionCardPlane):
+    """待办事项列表面板。"""
+
     todoAmountChanged = pyqtSignal(int)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-
         self.setTitle("全部待办")
         self.setUseSignals(True)
 
@@ -305,7 +297,8 @@ class TODOListPanel(ThemedOptionCardPlane):
         # 全局方法
         SiGlobal.todo_list.addTODO = self.addTODO
 
-    def updateTODOAmount(self):
+    def updateTODOAmount(self) -> None:
+        """更新待办事项数量显示。"""
         todo_amount = len(self.body().widgets_top)
         self.todoAmountChanged.emit(todo_amount)
 
@@ -314,19 +307,27 @@ class TODOListPanel(ThemedOptionCardPlane):
         else:
             self.no_todo_label.hide()
 
-    def reloadStyleSheet(self):
+    def reloadStyleSheet(self) -> None:
+        """重新加载样式表。"""
         self.setThemeColor(SiGlobal.siui.colors["PANEL_THEME"])
         super().reloadStyleSheet()
 
         self.no_todo_label.setStyleSheet("color: {}".format(SiGlobal.siui.colors["TEXT_E"]))
         self.complete_all_button.attachment().load(SiGlobal.siui.icons["fi-rr-list-check"])
 
-    def _onCompleteAllButtonClicked(self):
+    def _onCompleteAllButtonClicked(self) -> None:
+        """响应全部完成按钮点击事件。"""
         for obj in self.body().widgets_top:
             if isinstance(obj, SingleTODOOption):
                 obj.check_box.setChecked(True)
 
-    def addTODO(self, text):
+    def addTODO(self, text: str) -> None:
+        """
+        添加待办事项到列表。
+
+        Args:
+            text: 待办事项文本
+        """
         new_todo = SingleTODOOption(self)
         self.body().addWidget(new_todo)
 
@@ -338,29 +339,33 @@ class TODOListPanel(ThemedOptionCardPlane):
         self.adjustSize()
         self.updateTODOAmount()
 
-    def adjustSize(self):
+    def adjustSize(self) -> None:
+        """调整面板大小。"""
         self.body().adjustSize()
         super().adjustSize()
 
-    def leaveEvent(self, event):
+    def leaveEvent(self, event: QEvent) -> None:
+        """处理鼠标离开事件，删除已完成的待办。"""
         super().leaveEvent(event)
 
-        for index, obj in enumerate(SiGlobal.todo_list.delete_pile):
+        for obj in SiGlobal.todo_list.delete_pile:
             self.body().removeWidget(obj)
             obj.close()
 
         SiGlobal.todo_list.delete_pile = []
 
-        if SiGlobal.todo_list.todo_list_unfold_button.isChecked() is True:
+        if SiGlobal.todo_list.todo_list_unfold_button.isChecked():
             self.adjustSize()
             self.updateTODOAmount()
 
-    def showEvent(self, a0):
+    def showEvent(self, a0: QEvent) -> None:
+        """处理显示事件。"""
         super().showEvent(a0)
         self.updateTODOAmount()
         self.setForceUseAnimations(True)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QEvent) -> None:
+        """处理大小改变事件。"""
         super().resizeEvent(event)
         self.no_todo_label.resize(event.size().width(), 150)
 
@@ -564,21 +569,25 @@ class SettingsPanel(ThemedOptionCardPlane):
 
 
 class TODOApplication(QMainWindow):
-    def __init__(self, *args, **kwargs):
+    """主应用程序窗口。"""
+
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         # 窗口周围留白，供阴影使用
-        self.padding = 48
-        self.anchor = QPoint(self.x(), self.y())
-        self.fixed_position = QPoint(SiGlobal.todo_list.settings_parser.options["FIXED_POSITION_X"],
-                                     SiGlobal.todo_list.settings_parser.options["FIXED_POSITION_Y"])
+        self.padding: int = 48
+        self.anchor: QPoint = QPoint(self.x(), self.y())
+        self.fixed_position: QPoint = QPoint(
+            SiGlobal.todo_list.settings_parser.get("FIXED_POSITION_X", 100),
+            SiGlobal.todo_list.settings_parser.get("FIXED_POSITION_Y", 100)
+        )
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)  # 设置窗口背景透明
 
         # 初始化全局变量
-        SiGlobal.todo_list.todo_list_unfold_state = True
-        SiGlobal.todo_list.add_todo_unfold_state = False
+        SiGlobal.todo_list.todo_list_unfold_state: bool = True
+        SiGlobal.todo_list.add_todo_unfold_state: bool = False
 
         # 初始化工具提示窗口
         SiGlobal.siui.windows["TOOL_TIP"] = ToolTipWindow()
@@ -666,11 +675,11 @@ class TODOApplication(QMainWindow):
         SiGlobal.siui.reloadAllWindowsStyleSheet()
 
         # 读取 todos.ini 添加到待办
-        for todo in SiGlobal.todo_list.todos_parser.todos:
+        for todo in SiGlobal.todo_list.todos_parser.get_all():
             self.todo_list_panel.addTODO(todo)
 
-
-    def adjustSize(self):
+    def adjustSize(self) -> None:
+        """调整主窗口大小以适应内容。"""
         h = (self.header_panel.height() + 12 +
              self.settings_panel.height() + 12 +
              self.add_todo_panel.height() + 12 +
@@ -679,86 +688,126 @@ class TODOApplication(QMainWindow):
         self.resize(self.width(), h)
         self.container_v.adjustSize()
 
-    def resizeEvent(self, a0):
+    def resizeEvent(self, a0: QEvent) -> None:
+        """处理窗口大小改变事件。"""
         super().resizeEvent(a0)
         self.container_v.move(0, self.padding)
 
-    def showEvent(self, a0):
+    def showEvent(self, a0: QEvent) -> None:
+        """处理窗口显示事件。"""
         super().showEvent(a0)
 
-    def _onTODOWindowResized(self, size):
+    def _onTODOWindowResized(self, size) -> None:
+        """处理面板大小改变事件。"""
         w, h = size
         self.adjustSize()
 
-    def _onShowTODOButtonToggled(self, state):
-        if state is True:
+    def _onShowTODOButtonToggled(self, state: bool) -> None:
+        """
+        响应待办列表显示/隐藏按钮切换事件。
+
+        Args:
+            state: 新的显示状态
+        """
+        if state:
             self.todo_list_panel_placeholder.setFixedHeight(12)
             self.todo_list_panel.adjustSize()
         else:
             self.todo_list_panel_placeholder.setFixedHeight(0)
             self.todo_list_panel.resize(self.todo_list_panel.width(), 0)
 
-    def _onAddTODOButtonToggled(self, state):
-        if state is True:
+    def _onAddTODOButtonToggled(self, state: bool) -> None:
+        """
+        响应添加待办按钮切换事件。
+
+        Args:
+            state: 新的显示状态
+        """
+        if state:
             self.add_todo_panel_placeholder.setFixedHeight(12)
             self.add_todo_panel.adjustSize()
         else:
             self.add_todo_panel_placeholder.setFixedHeight(0)
             self.add_todo_panel.resize(self.add_todo_panel.width(), 0)
 
-    def _onSettingsButtonToggled(self, state):
-        if state is True:
+    def _onSettingsButtonToggled(self, state: bool) -> None:
+        """
+        响应设置按钮切换事件。
+
+        Args:
+            state: 新的显示状态
+        """
+        if state:
             self.settings_panel_placeholder.setFixedHeight(12)
             self.settings_panel.adjustSize()
         else:
             self.settings_panel_placeholder.setFixedHeight(0)
             self.settings_panel.resize(self.settings_panel.width(), 0)
 
-    def _onTODOAmountChanged(self, amount):
+    def _onTODOAmountChanged(self, amount: int) -> None:
+        """
+        响应待办数量改变事件。
+
+        Args:
+            amount: 新的待办数量
+        """
         if amount == 0:
             self.header_panel.unfold_button.attachment().setText("没有待办")
         else:
             self.header_panel.unfold_button.attachment().setText(f"{amount}个待办事项")
         self.header_panel.unfold_button.adjustSize()
 
-    def _onAddTODOConfirmButtonClicked(self):
+    def _onAddTODOConfirmButtonClicked(self) -> None:
+        """处理添加待办确认按钮点击事件。"""
         text = self.add_todo_panel.text_edit.toPlainText()
         self.add_todo_panel.text_edit.setText("")
         self.header_panel.add_todo_button.setChecked(False)
 
-        while text[-1:] == "\n":
-            text = text[:-1]
+        # 移除末尾的换行符
+        text = text.rstrip("\n")
 
-        if text == "":
+        if not text:
             return
 
         self.todo_list_panel.addTODO(text)
 
-    def _onAddTODOCancelButtonClicked(self):
+    def _onAddTODOCancelButtonClicked(self) -> None:
+        """处理添加待办取消按钮点击事件。"""
         self.add_todo_panel.text_edit.setText("")
         self.header_panel.add_todo_button.setChecked(False)
 
-    def moveTo(self, x, y):
+    def moveTo(self, x: int, y: int) -> None:
+        """
+        平滑移动窗口到指定位置。
+
+        Args:
+            x: 目标 X 坐标
+            y: 目标 Y 坐标
+        """
         self.move_animation.setTarget([x, y])
         self.move_animation.try_to_start()
 
-    def moveEvent(self, a0):
+    def moveEvent(self, a0: QEvent) -> None:
+        """处理窗口移动事件。"""
         super().moveEvent(a0)
         x, y = a0.pos().x(), a0.pos().y()
         self.move_animation.setCurrent([x, y])
 
-    def _onMoveAnimationTicked(self, pos):
+    def _onMoveAnimationTicked(self, pos) -> None:
+        """处理移动动画刻度事件。"""
         self.move(int(pos[0]), int(pos[1]))
-        if SiGlobal.todo_list.position_locked is False:
+        if not SiGlobal.todo_list.position_locked:
             self.fixed_position = self.pos()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
+        """处理鼠标按下事件。"""
         super().mousePressEvent(event)
         if event.button() == Qt.LeftButton:
             self.anchor = event.pos()
             event.accept()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event) -> None:
+        """处理鼠标移动事件。"""
         super().mouseMoveEvent(event)
         if not (event.buttons() & Qt.LeftButton):
             return
@@ -768,22 +817,30 @@ class TODOApplication(QMainWindow):
 
         self.moveTo(x, y)
 
-    def mouseReleaseEvent(self, a0):
-        if SiGlobal.todo_list.position_locked is True:
+    def mouseReleaseEvent(self, a0) -> None:
+        """处理鼠标释放事件。"""
+        if SiGlobal.todo_list.position_locked:
             self.moveTo(self.fixed_position.x(), self.fixed_position.y())
 
-    def closeEvent(self, a0):
+    def closeEvent(self, a0: QEvent) -> None:
+        """处理窗口关闭事件，保存所有数据。"""
         super().closeEvent(a0)
 
-        # 获取当前待办，并写入 todos.ini
-        todos = [widget.text_label.text() for widget in self.todo_list_panel.body().widgets_top]
-        SiGlobal.todo_list.todos_parser.todos = todos
-        SiGlobal.todo_list.todos_parser.write()
+        try:
+            # 获取当前待办，并写入 todos.ini
+            todos = [widget.text_label.text() for widget in self.todo_list_panel.body().widgets_top
+                     if isinstance(widget, SingleTODOOption)]
+            SiGlobal.todo_list.todos_parser.todos = todos
+            SiGlobal.todo_list.todos_parser.write()
 
-        # 写入设置到 options.ini
-        SiGlobal.todo_list.settings_parser.modify("FIXED_POSITION_X", self.fixed_position.x())
-        SiGlobal.todo_list.settings_parser.modify("FIXED_POSITION_Y", self.fixed_position.y())
-        SiGlobal.todo_list.settings_parser.write()
+            # 写入设置到 options.ini
+            SiGlobal.todo_list.settings_parser.modify("FIXED_POSITION_X", self.fixed_position.x())
+            SiGlobal.todo_list.settings_parser.modify("FIXED_POSITION_Y", self.fixed_position.y())
+            SiGlobal.todo_list.settings_parser.write()
+
+            logger.info("应用程序数据已保存")
+        except Exception as e:
+            logger.error(f"保存数据时出错: {e}")
 
         SiGlobal.siui.windows["TOOL_TIP"].close()
         QCoreApplication.quit()

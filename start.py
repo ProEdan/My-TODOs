@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5.QtWidgets import QApplication
-from ui import TODOApplication
+from enhanced_ui import TODOApplication
 
 import siui
 
